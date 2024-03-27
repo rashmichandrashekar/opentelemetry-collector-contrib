@@ -17,10 +17,9 @@ import (
 	"time"
 
 	"github.com/cnf/structhash"
-	"github.com/mitchellh/hashstructure/v2"
 	commonconfig "github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
-	promConfig "github.com/prometheus/prometheus/config"
+	promconfig "github.com/prometheus/prometheus/config"
 	promHTTP "github.com/prometheus/prometheus/discovery/http"
 	"github.com/prometheus/prometheus/model/relabel"
 	"github.com/stretchr/testify/require"
@@ -158,59 +157,6 @@ type Responses struct {
 	responses   map[string][]mockTargetAllocatorResponseRaw
 }
 
-func benchDataPromConfig() map[string]*promConfig.ScrapeConfig {
-	jobToScrapeConfig := map[string]*promConfig.ScrapeConfig{}
-	jobToScrapeConfig["job1"] = &promConfig.ScrapeConfig{
-		JobName:         "job1",
-		HonorTimestamps: true,
-		ScrapeInterval:  model.Duration(30 * time.Second),
-		ScrapeTimeout:   model.Duration(30 * time.Second),
-		MetricsPath:     "/metrics",
-		Scheme:          "http",
-		MetricRelabelConfigs: []*relabel.Config{
-			{
-				Separator: ";",
-				Regex:     relabel.MustNewRegexp("(.*)"),
-				Action:    relabel.Keep,
-			},
-		},
-	}
-
-	jobToScrapeConfig["job2"] = &promConfig.ScrapeConfig{
-		JobName:         "job2",
-		HonorTimestamps: true,
-		ScrapeInterval:  model.Duration(30 * time.Second),
-		ScrapeTimeout:   model.Duration(30 * time.Second),
-		MetricsPath:     "/metrics",
-		Scheme:          "http",
-		MetricRelabelConfigs: []*relabel.Config{
-			{
-				Separator: ";",
-				Regex:     relabel.MustNewRegexp("(.*)"),
-				Action:    relabel.Keep,
-			},
-		},
-	}
-
-	return jobToScrapeConfig
-}
-
-func BenchmarkStructHash(b *testing.B) {
-	s := benchDataPromConfig()
-
-	for i := 0; i < b.N; i++ {
-		structhash.Hash(s, 1)
-	}
-}
-
-func BenchmarkHashStructure(b *testing.B) {
-	s := benchDataPromConfig()
-
-	for i := 0; i < b.N; i++ {
-		hashstructure.Hash(s, hashstructure.FormatV2, nil)
-	}
-}
-
 func TestTargetAllocatorJobRetrieval(t *testing.T) {
 	for _, tc := range []struct {
 		desc      string
@@ -279,7 +225,7 @@ func TestTargetAllocatorJobRetrieval(t *testing.T) {
 				},
 			},
 			cfg: &Config{
-				PrometheusConfig: &PromConfig{},
+				PrometheusConfig: &PromConfig{GlobalConfig: promconfig.DefaultGlobalConfig},
 				TargetAllocator: &TargetAllocator{
 					Interval:    10 * time.Second,
 					CollectorID: "collector-1",
@@ -373,7 +319,7 @@ func TestTargetAllocatorJobRetrieval(t *testing.T) {
 				},
 			},
 			cfg: &Config{
-				PrometheusConfig: &PromConfig{},
+				PrometheusConfig: &PromConfig{GlobalConfig: promconfig.DefaultGlobalConfig},
 				TargetAllocator: &TargetAllocator{
 					Interval:    10 * time.Second,
 					CollectorID: "collector-1",
@@ -485,7 +431,7 @@ func TestTargetAllocatorJobRetrieval(t *testing.T) {
 				},
 			},
 			cfg: &Config{
-				PrometheusConfig: &PromConfig{},
+				PrometheusConfig: &PromConfig{GlobalConfig: promconfig.DefaultGlobalConfig},
 				TargetAllocator: &TargetAllocator{
 					Interval:    10 * time.Second,
 					CollectorID: "collector-1",
@@ -527,7 +473,7 @@ func TestTargetAllocatorJobRetrieval(t *testing.T) {
 				},
 			},
 			cfg: &Config{
-				PrometheusConfig: &PromConfig{},
+				PrometheusConfig: &PromConfig{GlobalConfig: promconfig.DefaultGlobalConfig},
 				TargetAllocator: &TargetAllocator{
 					Interval:    50 * time.Millisecond,
 					CollectorID: "collector-1",
@@ -603,7 +549,7 @@ func TestTargetAllocatorJobRetrieval(t *testing.T) {
 			},
 			cfg: &Config{
 				PrometheusConfig: &PromConfig{
-					ScrapeConfigs: []*promConfig.ScrapeConfig{
+					ScrapeConfigs: []*promconfig.ScrapeConfig{
 						{
 							JobName:         "job1",
 							HonorTimestamps: true,
