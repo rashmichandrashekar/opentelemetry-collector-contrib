@@ -38,7 +38,7 @@ type metricExporterImp struct {
 	shutdownWg sync.WaitGroup
 }
 
-func newMetricsExporter(params exporter.CreateSettings, cfg component.Config) (*metricExporterImp, error) {
+func newMetricsExporter(params exporter.Settings, cfg component.Config) (*metricExporterImp, error) {
 	exporterFactory := otlpexporter.NewFactory()
 
 	lb, err := newLoadBalancer(params, cfg, func(ctx context.Context, endpoint string) (component.Component, error) {
@@ -88,12 +88,12 @@ func (e *metricExporterImp) ConsumeMetrics(ctx context.Context, md pmetric.Metri
 	endpoints := make(map[*wrappedExporter]string)
 
 	for _, batch := range batches {
-		routingIds, err := routingIdentifiersFromMetrics(batch, e.routingKey)
+		routingIDs, err := routingIdentifiersFromMetrics(batch, e.routingKey)
 		if err != nil {
 			return err
 		}
 
-		for rid := range routingIds {
+		for rid := range routingIDs {
 			exp, endpoint, err := e.loadBalancer.exporterAndEndpoint([]byte(rid))
 			if err != nil {
 				return err

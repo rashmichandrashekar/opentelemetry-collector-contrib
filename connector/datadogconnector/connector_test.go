@@ -31,7 +31,7 @@ var _ component.Component = (*traceToMetricConnector)(nil) // testing that the c
 func TestNewConnector(t *testing.T) {
 	factory := NewFactory()
 
-	creationParams := connectortest.NewNopCreateSettings()
+	creationParams := connectortest.NewNopSettings()
 	cfg := factory.CreateDefaultConfig().(*Config)
 
 	traceToMetricsConnector, err := factory.CreateTracesToMetrics(context.Background(), creationParams, cfg, consumertest.NewNop())
@@ -44,7 +44,7 @@ func TestNewConnector(t *testing.T) {
 func TestTraceToTraceConnector(t *testing.T) {
 	factory := NewFactory()
 
-	creationParams := connectortest.NewNopCreateSettings()
+	creationParams := connectortest.NewNopSettings()
 	cfg := factory.CreateDefaultConfig().(*Config)
 
 	traceToTracesConnector, err := factory.CreateTracesToTraces(context.Background(), creationParams, cfg, consumertest.NewNop())
@@ -68,6 +68,8 @@ func generateTrace() ptrace.Traces {
 	res.Attributes().PutStr("container.id", "my-container-id")
 	res.Attributes().PutStr("cloud.availability_zone", "my-zone")
 	res.Attributes().PutStr("cloud.region", "my-region")
+	// add a custom Resource attribute
+	res.Attributes().PutStr("az", "my-az")
 
 	ss := td.ResourceSpans().At(0).ScopeSpans().AppendEmpty().Spans()
 	ss.EnsureCapacity(1)
@@ -101,9 +103,9 @@ func fillSpanOne(span ptrace.Span) {
 func creteConnector(t *testing.T) (*traceToMetricConnector, *consumertest.MetricsSink) {
 	factory := NewFactory()
 
-	creationParams := connectortest.NewNopCreateSettings()
+	creationParams := connectortest.NewNopSettings()
 	cfg := factory.CreateDefaultConfig().(*Config)
-	cfg.Traces.ResourceAttributesAsContainerTags = []string{semconv.AttributeCloudAvailabilityZone, semconv.AttributeCloudRegion}
+	cfg.Traces.ResourceAttributesAsContainerTags = []string{semconv.AttributeCloudAvailabilityZone, semconv.AttributeCloudRegion, "az"}
 
 	metricsSink := &consumertest.MetricsSink{}
 
@@ -138,11 +140,11 @@ func TestContainerTags(t *testing.T) {
 	// check if the container tags are added to the cache
 	assert.Equal(t, 1, len(connector.containerTagCache.Items()))
 	count := 0
-	connector.containerTagCache.Items()["my-container-id"].Object.(*sync.Map).Range(func(key, value any) bool {
+	connector.containerTagCache.Items()["my-container-id"].Object.(*sync.Map).Range(func(_, _ any) bool {
 		count++
 		return true
 	})
-	assert.Equal(t, 2, count)
+	assert.Equal(t, 3, count)
 
 	for {
 		if len(metricsSink.AllMetrics()) > 0 {
@@ -166,8 +168,8 @@ func TestContainerTags(t *testing.T) {
 	require.NoError(t, err)
 
 	tags := sp.Stats[0].Tags
-	assert.Equal(t, 2, len(tags))
-	assert.ElementsMatch(t, []string{"region:my-region", "zone:my-zone"}, tags)
+	assert.Equal(t, 3, len(tags))
+	assert.ElementsMatch(t, []string{"region:my-region", "zone:my-zone", "az:my-az"}, tags)
 }
 
 func newTranslatorWithStatsChannel(t *testing.T, logger *zap.Logger, ch chan []byte) *otlpmetrics.Translator {

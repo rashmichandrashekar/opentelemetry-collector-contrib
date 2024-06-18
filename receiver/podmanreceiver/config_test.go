@@ -36,8 +36,9 @@ func TestLoadConfig(t *testing.T) {
 					InitialDelay:       time.Second,
 					Timeout:            5 * time.Second,
 				},
-				APIVersion: defaultAPIVersion,
-				Endpoint:   "unix:///run/podman/podman.sock",
+				APIVersion:           defaultAPIVersion,
+				Endpoint:             "unix:///run/podman/podman.sock",
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 			},
 		},
 		{
@@ -48,8 +49,9 @@ func TestLoadConfig(t *testing.T) {
 					InitialDelay:       time.Second,
 					Timeout:            20 * time.Second,
 				},
-				APIVersion: defaultAPIVersion,
-				Endpoint:   "http://example.com/",
+				APIVersion:           defaultAPIVersion,
+				Endpoint:             "http://example.com/",
+				MetricsBuilderConfig: metadata.DefaultMetricsBuilderConfig(),
 			},
 		},
 	}
@@ -61,7 +63,7 @@ func TestLoadConfig(t *testing.T) {
 
 			sub, err := cm.Sub(tt.id.String())
 			require.NoError(t, err)
-			require.NoError(t, component.UnmarshalConfig(sub, cfg))
+			require.NoError(t, sub.Unmarshal(cfg))
 
 			assert.NoError(t, component.ValidateConfig(cfg))
 			assert.Equal(t, tt.expected, cfg)

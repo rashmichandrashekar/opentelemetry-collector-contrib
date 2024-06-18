@@ -26,7 +26,7 @@ func TestLoadConfig(t *testing.T) {
 
 	sub, err := cm.Sub(component.NewIDWithName(metadata.Type, "").String())
 	require.NoError(t, err)
-	require.NoError(t, component.UnmarshalConfig(sub, cfg))
+	require.NoError(t, sub.Unmarshal(cfg))
 
 	assert.Equal(t, &Config{
 		ControllerConfig: scraperhelper.NewDefaultControllerConfig(),
@@ -36,7 +36,7 @@ func TestLoadConfig(t *testing.T) {
 		GroupMatch:       "test_\\w+",
 		Authentication: kafka.Authentication{
 			TLS: &configtls.ClientConfig{
-				TLSSetting: configtls.Config{
+				Config: configtls.Config{
 					CAFile:   "ca.pem",
 					CertFile: "cert.pem",
 					KeyFile:  "key.pem",

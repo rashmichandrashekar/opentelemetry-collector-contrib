@@ -39,7 +39,7 @@ func TestScraperStart(t *testing.T) {
 					ClientConfig: confighttp.ClientConfig{
 						Endpoint: defaultEndpoint,
 						TLSSetting: configtls.ClientConfig{
-							TLSSetting: configtls.Config{
+							Config: configtls.Config{
 								CAFile: "/non/existent",
 							},
 						},
@@ -254,7 +254,7 @@ func TestScaperScrape(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.desc, func(t *testing.T) {
-			scraper := newScraper(zap.NewNop(), createDefaultConfig().(*Config), receivertest.NewNopCreateSettings())
+			scraper := newScraper(zap.NewNop(), createDefaultConfig().(*Config), receivertest.NewNopSettings())
 			scraper.client = tc.setupMockClient(t)
 
 			actualMetrics, err := scraper.scrape(context.Background())

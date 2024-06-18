@@ -6,7 +6,7 @@
 | Stability     | [alpha]: traces, metrics, logs   |
 | Distributions | [contrib] |
 | Issues        | [![Open issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aopen%20label%3Aexporter%2Fclickhouse%20&label=open&color=orange&logo=opentelemetry)](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues?q=is%3Aopen+is%3Aissue+label%3Aexporter%2Fclickhouse) [![Closed issues](https://img.shields.io/github/issues-search/open-telemetry/opentelemetry-collector-contrib?query=is%3Aissue%20is%3Aclosed%20label%3Aexporter%2Fclickhouse%20&label=closed&color=blue&logo=opentelemetry)](https://github.com/open-telemetry/opentelemetry-collector-contrib/issues?q=is%3Aclosed+is%3Aissue+label%3Aexporter%2Fclickhouse) |
-| [Code Owners](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/CONTRIBUTING.md#becoming-a-code-owner)    | [@hanjm](https://www.github.com/hanjm), [@dmitryax](https://www.github.com/dmitryax), [@Frapschen](https://www.github.com/Frapschen) |
+| [Code Owners](https://github.com/open-telemetry/opentelemetry-collector-contrib/blob/main/CONTRIBUTING.md#becoming-a-code-owner)    | [@hanjm](https://www.github.com/hanjm), [@dmitryax](https://www.github.com/dmitryax), [@Frapschen](https://www.github.com/Frapschen), [@SpencerTorres](https://www.github.com/SpencerTorres) |
 
 [alpha]: https://github.com/open-telemetry/opentelemetry-collector#alpha
 [contrib]: https://github.com/open-telemetry/opentelemetry-collector-releases/tree/main/distributions/otelcol-contrib
@@ -279,10 +279,11 @@ Connection options:
 
 - `username` (default = ): The authentication username.
 - `password` (default = ): The authentication password.
+- `connection_params` (default = {}). Params is the extra connection parameters with map format.
 - `ttl_days` (default = 0): **Deprecated: Use 'ttl' instead.**  The data time-to-live in days, 0 means no ttl.
 - `ttl` (default = 0): The data time-to-live example 30m, 48h. Also, 0 means no ttl.
 - `database` (default = otel): The database name.
-- `connection_params` (default = {}). Params is the extra connection parameters with map format.
+- `create_schema` (default = true): When set to true, will run DDL to create the database and tables. (See [schema management](#schema-management))
 
 ClickHouse tables:
 
@@ -321,6 +322,19 @@ Processing:
 The exporter supports TLS. To enable TLS, you need to specify the `secure=true` query parameter in the `endpoint` URL or
 use the `https` scheme.
 
+## Schema management
+
+By default the exporter will create the database and tables under the names defined in the config. This is fine for simple deployments, but for production workloads, it is recommended that you manage your own schema by setting `create_schema` to `false` in the config.
+This prevents each exporter process from racing to create the database and tables, and makes it easier to upgrade the exporter in the future.
+
+In this mode, the only SQL sent to your server will be for `INSERT` statements.
+
+The default DDL used by the exporter can be found in `example/default_ddl`.
+Be sure to customize the indexes, TTL, and partitioning to fit your deployment.
+Column names and types must be the same to preserve compatibility with the exporter's `INSERT` statements.
+As long as the column names/types match the `INSERT` statement, you can create whatever kind of table you want.
+See [ClickHouse's LogHouse](https://clickhouse.com/blog/building-a-logging-platform-with-clickhouse-and-saving-millions-over-datadog#schema) as an example of this flexibility.
+
 ## Example
 
 This example shows how to configure the exporter to send data to a ClickHouse server.
@@ -339,6 +353,7 @@ exporters:
     endpoint: tcp://127.0.0.1:9000?dial_timeout=10s&compress=lz4
     database: otel
     ttl: 72h
+    create_schema: true
     logs_table_name: otel_logs
     traces_table_name: otel_traces
     metrics_table_name: otel_metrics

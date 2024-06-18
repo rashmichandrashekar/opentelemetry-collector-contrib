@@ -49,6 +49,14 @@ func Test_e2e_editors(t *testing.T) {
 			},
 		},
 		{
+			statement: `keep_matching_keys(attributes, "^http")`,
+			want: func(tCtx ottllog.TransformContext) {
+				tCtx.GetLogRecord().Attributes().Remove("flags")
+				tCtx.GetLogRecord().Attributes().Remove("total.string")
+				tCtx.GetLogRecord().Attributes().Remove("foo")
+			},
+		},
+		{
 			statement: `flatten(attributes)`,
 			want: func(tCtx ottllog.TransformContext) {
 				tCtx.GetLogRecord().Attributes().Remove("foo")
@@ -78,7 +86,7 @@ func Test_e2e_editors(t *testing.T) {
 		},
 		{
 			statement: `flatten(attributes, depth=0)`,
-			want:      func(tCtx ottllog.TransformContext) {},
+			want:      func(_ ottllog.TransformContext) {},
 		},
 		{
 			statement: `flatten(attributes, depth=1)`,
@@ -110,7 +118,7 @@ func Test_e2e_editors(t *testing.T) {
 		},
 		{
 			statement: `limit(attributes, 100, [])`,
-			want:      func(tCtx ottllog.TransformContext) {},
+			want:      func(_ ottllog.TransformContext) {},
 		},
 		{
 			statement: `limit(attributes, 1, ["total.string"])`,
@@ -189,6 +197,12 @@ func Test_e2e_editors(t *testing.T) {
 			},
 		},
 		{
+			statement: `replace_pattern(attributes["http.path"], "/", "@", SHA256)`,
+			want: func(tCtx ottllog.TransformContext) {
+				tCtx.GetLogRecord().Attributes().PutStr("http.path", "c3641f8544d7c02f3580b07c0f9887f0c6a27ff5ab1d4a3e29caf197cfc299aehealth")
+			},
+		},
+		{
 			statement: `set(attributes["test"], "pass")`,
 			want: func(tCtx ottllog.TransformContext) {
 				tCtx.GetLogRecord().Attributes().PutStr("test", "pass")
@@ -196,11 +210,11 @@ func Test_e2e_editors(t *testing.T) {
 		},
 		{
 			statement: `set(attributes["test"], nil)`,
-			want:      func(tCtx ottllog.TransformContext) {},
+			want:      func(_ ottllog.TransformContext) {},
 		},
 		{
 			statement: `set(attributes["test"], attributes["unknown"])`,
-			want:      func(tCtx ottllog.TransformContext) {},
+			want:      func(_ ottllog.TransformContext) {},
 		},
 		{
 			statement: `set(attributes["foo"]["test"], "pass")`,
@@ -211,7 +225,7 @@ func Test_e2e_editors(t *testing.T) {
 		},
 		{
 			statement: `truncate_all(attributes, 100)`,
-			want:      func(tCtx ottllog.TransformContext) {},
+			want:      func(_ ottllog.TransformContext) {},
 		},
 		{
 			statement: `truncate_all(attributes, 1)`,
@@ -221,6 +235,45 @@ func Test_e2e_editors(t *testing.T) {
 				tCtx.GetLogRecord().Attributes().PutStr("http.url", "h")
 				tCtx.GetLogRecord().Attributes().PutStr("flags", "A")
 				tCtx.GetLogRecord().Attributes().PutStr("total.string", "1")
+			},
+		},
+		{
+			statement: `append(attributes["foo"]["slice"], "sample_value")`,
+			want: func(tCtx ottllog.TransformContext) {
+				v, _ := tCtx.GetLogRecord().Attributes().Get("foo")
+				sv, _ := v.Map().Get("slice")
+				s := sv.Slice()
+				s.AppendEmpty().SetStr("sample_value")
+
+			},
+		},
+		{
+			statement: `append(attributes["foo"]["flags"], "sample_value")`,
+			want: func(tCtx ottllog.TransformContext) {
+				v, _ := tCtx.GetLogRecord().Attributes().Get("foo")
+				s := v.Map().PutEmptySlice("flags")
+				s.AppendEmpty().SetStr("pass")
+				s.AppendEmpty().SetStr("sample_value")
+
+			},
+		},
+		{
+			statement: `append(attributes["foo"]["slice"], values=[5,6])`,
+			want: func(tCtx ottllog.TransformContext) {
+				v, _ := tCtx.GetLogRecord().Attributes().Get("foo")
+				sv, _ := v.Map().Get("slice")
+				s := sv.Slice()
+				s.AppendEmpty().SetInt(5)
+				s.AppendEmpty().SetInt(6)
+			},
+		},
+		{
+			statement: `append(attributes["foo"]["new_slice"], values=[5,6])`,
+			want: func(tCtx ottllog.TransformContext) {
+				v, _ := tCtx.GetLogRecord().Attributes().Get("foo")
+				s := v.Map().PutEmptySlice("new_slice")
+				s.AppendEmpty().SetInt(5)
+				s.AppendEmpty().SetInt(6)
 			},
 		},
 	}
@@ -383,6 +436,12 @@ func Test_e2e_converters(t *testing.T) {
 			},
 		},
 		{
+			statement: `set(attributes["test"], "pass") where IsList(attributes["foo"]["slice"])`,
+			want: func(tCtx ottllog.TransformContext) {
+				tCtx.GetLogRecord().Attributes().PutStr("test", "pass")
+			},
+		},
+		{
 			statement: `set(attributes["test"], "pass") where IsMatch("aa123bb", "\\d{3}")`,
 			want: func(tCtx ottllog.TransformContext) {
 				tCtx.GetLogRecord().Attributes().PutStr("test", "pass")
@@ -535,6 +594,36 @@ func Test_e2e_converters(t *testing.T) {
 			},
 		},
 		{
+			statement: `set(attributes["test"], String("test"))`,
+			want: func(tCtx ottllog.TransformContext) {
+				tCtx.GetLogRecord().Attributes().PutStr("test", "test")
+			},
+		},
+		{
+			statement: `set(attributes["test"], String(attributes["http.method"]))`,
+			want: func(tCtx ottllog.TransformContext) {
+				tCtx.GetLogRecord().Attributes().PutStr("test", "get")
+			},
+		},
+		{
+			statement: `set(attributes["test"], String(span_id))`,
+			want: func(tCtx ottllog.TransformContext) {
+				tCtx.GetLogRecord().Attributes().PutStr("test", "[1,2,3,4,5,6,7,8]")
+			},
+		},
+		{
+			statement: `set(attributes["test"], String([1,2,3]))`,
+			want: func(tCtx ottllog.TransformContext) {
+				tCtx.GetLogRecord().Attributes().PutStr("test", "[1,2,3]")
+			},
+		},
+		{
+			statement: `set(attributes["test"], String(true))`,
+			want: func(tCtx ottllog.TransformContext) {
+				tCtx.GetLogRecord().Attributes().PutStr("test", "true")
+			},
+		},
+		{
 			statement: `set(attributes["test"], Substring("pass", 0, 2))`,
 			want: func(tCtx ottllog.TransformContext) {
 				tCtx.GetLogRecord().Attributes().PutStr("test", "pa")
@@ -650,7 +739,7 @@ func Test_e2e_ottl_features(t *testing.T) {
 		{
 			name:      "where clause",
 			statement: `set(attributes["test"], "pass") where body == "operationB"`,
-			want:      func(tCtx ottllog.TransformContext) {},
+			want:      func(_ ottllog.TransformContext) {},
 		},
 		{
 			name:      "reach upwards",
@@ -704,7 +793,7 @@ func Test_e2e_ottl_features(t *testing.T) {
 		{
 			name:      "complex indexing not found",
 			statement: `set(attributes["test"], attributes["metadata"]["uid"])`,
-			want:      func(tCtx ottllog.TransformContext) {},
+			want:      func(_ ottllog.TransformContext) {},
 		},
 	}
 

@@ -37,7 +37,7 @@ type bigipScraper struct {
 }
 
 // newScraper creates an initialized bigipScraper
-func newScraper(logger *zap.Logger, cfg *Config, settings receiver.CreateSettings) *bigipScraper {
+func newScraper(logger *zap.Logger, cfg *Config, settings receiver.Settings) *bigipScraper {
 	return &bigipScraper{
 		logger:   logger,
 		cfg:      cfg,
@@ -47,8 +47,8 @@ func newScraper(logger *zap.Logger, cfg *Config, settings receiver.CreateSetting
 }
 
 // start initializes a new big-ip client for the scraper
-func (s *bigipScraper) start(_ context.Context, host component.Host) (err error) {
-	s.client, err = newClient(s.cfg, host, s.settings, s.logger)
+func (s *bigipScraper) start(ctx context.Context, host component.Host) (err error) {
+	s.client, err = newClient(ctx, s.cfg, host, s.settings, s.logger)
 	return
 }
 
